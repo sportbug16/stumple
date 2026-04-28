@@ -3,7 +3,7 @@ import { compareAttributes } from '../utils/gameLogic';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function GuessGrid({ guesses, targetPlayer }) {
-  const headers = ['Image', 'Name', 'Country', 'IPL Team', 'Age', 'Retired', 'Batting', 'Role'];
+  const headers = ['Image', 'Name', 'Country', 'Role', 'Retired', 'Age', 'IPL Team'];
 
   return (
     <div className="grid-container">
@@ -25,22 +25,19 @@ export default function GuessGrid({ guesses, targetPlayer }) {
               <div className={`cell color-${result.country}`}>
                 {guess.country}
               </div>
-              <div className={`cell color-${result.iplTeam}`}>
-                <div className="ipl-abbrev">{guess.currentIplTeam}</div>
+              <div className={`cell color-${result.role}`}>
+                {guess.role}
+              </div>
+              <div className={`cell color-${result.retired}`}>
+                {guess.retired}
               </div>
               <div className={`cell color-${result.age.color} flex-center`}>
                 {guess.age} 
                 {result.age.arrow === 'up' && <ArrowUp size={16} className="arrow-icon" />}
                 {result.age.arrow === 'down' && <ArrowDown size={16} className="arrow-icon" />}
               </div>
-              <div className={`cell color-${result.retired}`}>
-                {guess.retired}
-              </div>
-              <div className={`cell color-${result.battingHand}`}>
-                {guess.battingHand}
-              </div>
-              <div className={`cell color-${result.role}`}>
-                {guess.role}
+              <div className={`cell color-${result.iplTeam}`}>
+                <div className="ipl-abbrev">{guess.currentIplTeam}</div>
               </div>
             </div>
           );
@@ -49,4 +46,3 @@ export default function GuessGrid({ guesses, targetPlayer }) {
     </div>
   );
 }
-
