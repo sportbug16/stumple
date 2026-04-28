@@ -192,6 +192,30 @@ body {
   min-height: 60px;
 }
 
+/* Sticky first columns for horizontal scrolling */
+.cell:nth-child(1), .header-cell:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.cell:nth-child(2), .header-cell:nth-child(2) {
+  position: sticky;
+  left: 60px;
+  z-index: 2;
+}
+
+/* Ensure sticky cells maintain their background over scrolling content */
+.cell:nth-child(1), .cell:nth-child(2) {
+  background-color: var(--color-white);
+  z-index: 2;
+}
+
+.grid-header .header-cell:nth-child(1), .grid-header .header-cell:nth-child(2) {
+  background-color: var(--bg-color);
+  z-index: 3;
+}
+
 .image-cell {
   padding: 0;
   overflow: hidden;

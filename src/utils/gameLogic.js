@@ -13,6 +13,7 @@ export const ROLE_GROUPS = {
   "Wicketkeeper batter": "Batter",
   "Batting allrounder": "Allrounder",
   "Bowling allrounder": "Allrounder",
+  "Allrounder": "Allrounder",
   "Spin bowler": "Bowler",
   "Fast bowler": "Bowler"
 };

@@ -4,6 +4,7 @@ import { getDailyPlayer } from './utils/gameLogic';
 import playersData from './data/players.json';
 import SearchBar from './components/SearchBar';
 import GuessGrid from './components/GuessGrid';
+import { CricketBall } from './components/Icons';
 import { Calendar, HelpCircle, BarChart2 } from 'lucide-react';
 import './index.css';
 
@@ -64,7 +65,10 @@ function App() {
         <div className="icon-group">
           <HelpCircle className="icon" />
         </div>
-        <h1 className="title">Stumple</h1>
+        <div className="title-group flex-center">
+          <CricketBall size={32} />
+          <h1 className="title">Stumple</h1>
+        </div>
         <div className="icon-group">
           <BarChart2 className="icon" />
           <Calendar className="icon" onClick={() => {
