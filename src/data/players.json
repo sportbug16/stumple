@@ -1,0 +1,122 @@
+[
+  {
+    "id": "1",
+    "name": "Virat Kohli",
+    "country": "India",
+    "currentIplTeam": "RCB",
+    "pastIplTeams": [],
+    "age": 35,
+    "retired": "No",
+    "battingHand": "Right",
+    "role": "Top order batter",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Virat_Kohli_during_the_India_vs_Aus_4th_Test_match_at_Narendra_Modi_Stadium_on_09_March_2023.jpg"
+  },
+  {
+    "id": "2",
+    "name": "MS Dhoni",
+    "country": "India",
+    "currentIplTeam": "CSK",
+    "pastIplTeams": ["RPS"],
+    "age": 42,
+    "retired": "Yes",
+    "battingHand": "Right",
+    "role": "Wicketkeeper batter",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/c/c3/MS_Dhoni_%282023%29.jpg"
+  },
+  {
+    "id": "3",
+    "name": "AB de Villiers",
+    "country": "South Africa",
+    "currentIplTeam": "None",
+    "pastIplTeams": ["DC", "RCB"],
+    "age": 40,
+    "retired": "Yes",
+    "battingHand": "Right",
+    "role": "Middle order batter",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/2/29/AB_de_Villiers_2.jpg"
+  },
+  {
+    "id": "4",
+    "name": "Pat Cummins",
+    "country": "Australia",
+    "currentIplTeam": "SRH",
+    "pastIplTeams": ["KKR", "DC"],
+    "age": 30,
+    "retired": "No",
+    "battingHand": "Right",
+    "role": "Fast bowler",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Pat_Cummins_2019.jpg"
+  },
+  {
+    "id": "5",
+    "name": "Rashid Khan",
+    "country": "Afghanistan",
+    "currentIplTeam": "GT",
+    "pastIplTeams": ["SRH"],
+    "age": 25,
+    "retired": "No",
+    "battingHand": "Right",
+    "role": "Spin bowler",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Rashid_Khan_%28cricketer%29.jpg"
+  },
+  {
+    "id": "6",
+    "name": "Ben Stokes",
+    "country": "England",
+    "currentIplTeam": "CSK",
+    "pastIplTeams": ["RPS", "RR"],
+    "age": 32,
+    "retired": "No",
+    "battingHand": "Left",
+    "role": "Batting allrounder",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/9/90/Ben_Stokes_%282022%29.jpg"
+  },
+  {
+    "id": "7",
+    "name": "Rohit Sharma",
+    "country": "India",
+    "currentIplTeam": "MI",
+    "pastIplTeams": ["DC"],
+    "age": 36,
+    "retired": "No",
+    "battingHand": "Right",
+    "role": "Top order batter",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Rohit_Sharma_2023.jpg"
+  },
+  {
+    "id": "8",
+    "name": "Sunil Narine",
+    "country": "West Indies",
+    "currentIplTeam": "KKR",
+    "pastIplTeams": [],
+    "age": 35,
+    "retired": "No",
+    "battingHand": "Left",
+    "role": "Bowling allrounder",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/4/4b/Sunil_Narine.jpg"
+  },
+  {
+    "id": "9",
+    "name": "Babar Azam",
+    "country": "Pakistan",
+    "currentIplTeam": "None",
+    "pastIplTeams": [],
+    "age": 29,
+    "retired": "No",
+    "battingHand": "Right",
+    "role": "Top order batter",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/0/07/Babar_Azam_2023.jpg"
+  },
+  {
+    "id": "10",
+    "name": "Jasprit Bumrah",
+    "country": "India",
+    "currentIplTeam": "MI",
+    "pastIplTeams": [],
+    "age": 30,
+    "retired": "No",
+    "battingHand": "Right",
+    "role": "Fast bowler",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Jasprit_Bumrah.jpg"
+  }
+]
