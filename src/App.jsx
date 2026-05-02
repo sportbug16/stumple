@@ -1,44 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
 import { getDailyPlayer } from './utils/gameLogic';
 import playersData from './data/players.json';
 import SearchBar from './components/SearchBar';
 import GuessGrid from './components/GuessGrid';
+import { CricketBall } from './components/Icons';
 import { Calendar, HelpCircle, BarChart2 } from 'lucide-react';
 import './index.css';
 
+const maxGuesses = 8;
+
+function readStoredGuesses(dateString) {
+  const storedGuesses = localStorage.getItem(`stumple_guesses_${dateString}`);
+  if (!storedGuesses) {
+    return [];
+  }
+
+  try {
+    const parsedGuesses = JSON.parse(storedGuesses);
+    return Array.isArray(parsedGuesses) ? parsedGuesses : [];
+  } catch {
+    return [];
+  }
+}
+
+function getGameStatus(currentGuesses, target) {
+  if (currentGuesses.length === 0 || !target) {
+    return 'playing';
+  }
+
+  const lastGuess = currentGuesses[currentGuesses.length - 1];
+  if (lastGuess.id === target.id) {
+    return 'won';
+  }
+  return currentGuesses.length >= maxGuesses ? 'lost' : 'playing';
+}
+
 function App() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [targetPlayer, setTargetPlayer] = useState(null);
-  const [guesses, setGuesses] = useState([]);
-  const [gameStatus, setGameStatus] = useState('playing'); // playing, won, lost
+  const [gameState, setGameState] = useState(() => {
+    const selectedDate = new Date();
+    const dateString = format(selectedDate, 'yyyy-MM-dd');
+    return {
+      selectedDate,
+      guesses: readStoredGuesses(dateString)
+    };
+  });
 
-  const maxGuesses = 8;
+  const { selectedDate, guesses } = gameState;
   const dateString = format(selectedDate, 'yyyy-MM-dd');
+  const targetPlayer = useMemo(() => getDailyPlayer(playersData, dateString), [dateString]);
+  const gameStatus = getGameStatus(guesses, targetPlayer);
 
-  useEffect(() => {
-    // Initialize game for selected date
-    const player = getDailyPlayer(playersData, dateString);
-    setTargetPlayer(player);
-
-    const savedGuesses = JSON.parse(localStorage.getItem(`stumple_guesses_${dateString}`)) || [];
-    setGuesses(savedGuesses);
-    checkGameStatus(savedGuesses, player);
-  }, [dateString]);
-
-  const checkGameStatus = (currentGuesses, target) => {
-    if (currentGuesses.length === 0) {
-      setGameStatus('playing');
-      return;
-    }
-    const lastGuess = currentGuesses[currentGuesses.length - 1];
-    if (lastGuess.id === target.id) {
-      setGameStatus('won');
-    } else if (currentGuesses.length >= maxGuesses) {
-      setGameStatus('lost');
-    } else {
-      setGameStatus('playing');
-    }
+  const setGameDate = (selectedDate) => {
+    const nextDateString = format(selectedDate, 'yyyy-MM-dd');
+    setGameState({
+      selectedDate,
+      guesses: readStoredGuesses(nextDateString)
+    });
   };
 
   const handleGuess = (player) => {
@@ -46,14 +64,22 @@ function App() {
     if (guesses.find(g => g.id === player.id)) return;
     
     const newGuesses = [...guesses, player];
-    setGuesses(newGuesses);
     localStorage.setItem(`stumple_guesses_${dateString}`, JSON.stringify(newGuesses));
-    
-    checkGameStatus(newGuesses, targetPlayer);
+    setGameState((previousState) => ({
+      ...previousState,
+      guesses: newGuesses
+    }));
   };
 
   const changeDate = (days) => {
-    setSelectedDate(prev => subDays(prev, days));
+    setGameState((previousState) => {
+      const selectedDate = subDays(previousState.selectedDate, days);
+      const nextDateString = format(selectedDate, 'yyyy-MM-dd');
+      return {
+        selectedDate,
+        guesses: readStoredGuesses(nextDateString)
+      };
+    });
   };
 
   if (!targetPlayer) return <div className="loading">Loading...</div>;
@@ -64,7 +90,10 @@ function App() {
         <div className="icon-group">
           <HelpCircle className="icon" />
         </div>
-        <h1 className="title">Stumple</h1>
+        <div className="title-group flex-center">
+          <CricketBall size={32} />
+          <h1 className="title">Stumple</h1>
+        </div>
         <div className="icon-group">
           <BarChart2 className="icon" />
           <Calendar className="icon" onClick={() => {
@@ -78,7 +107,7 @@ function App() {
         <div className="date-display">
           Playing archive: {dateString} 
           {dateString !== format(new Date(), 'yyyy-MM-dd') && (
-            <button className="btn-today" onClick={() => setSelectedDate(new Date())}>
+            <button className="btn-today" onClick={() => setGameDate(new Date())}>
               Back to Today
             </button>
           )}
