@@ -38,7 +38,22 @@ def normalise_batting_hand(value: str) -> str:
 
 
 def normalise_retired(value: str) -> str:
-    return "Yes" if value.lower() == "yes" else "No"
+    value_lower = value.lower()
+    if value_lower == "yes":
+        return "Yes"
+    if value_lower == "no":
+        return "No"
+    return "Unknown"
+
+
+def parse_optional_int(value: str | None) -> int | None:
+    if not value:
+        return None
+    return int(value)
+
+
+def parse_count(value: str | None) -> int:
+    return int(value) if value else 0
 
 
 def team_abbreviation(team_name: str | None) -> str:
@@ -62,23 +77,24 @@ def build_player(row: dict[str, str]) -> dict[str, object]:
         "country": row.get("country") or "Unknown",
         "currentIplTeam": current_team,
         "pastIplTeams": past_teams,
-        "age": int(row["age"]),
-        "retired": normalise_retired(row["retired"]),
-        "battingHand": normalise_batting_hand(row["batting_hand"]),
+        "age": parse_optional_int(row.get("age")),
+        "retired": normalise_retired(row.get("retired") or ""),
+        "battingHand": normalise_batting_hand(row.get("batting_hand") or ""),
         "role": row.get("role") or "Unknown",
         "image": row.get("image") or DEFAULT_IMAGE,
-        "matches": int(row["matches"]) if row.get("matches") else None,
+        "matches": parse_count(row.get("matches")),
+        "iplMatches": parse_count(row.get("ipl_matches")),
         "careerSpan": row.get("career_span") or None,
         "sourceClassId": int(row["source_class_id"]) if row.get("source_class_id") else None,
     }
 
 
 def has_required_game_fields(row: dict[str, str]) -> bool:
-    required = ("player_id", "age", "retired")
+    required = ("player_id",)
     if not all(row.get(field) for field in required):
         return False
     try:
-        return int(row.get("matches") or 0) > 0
+        return int(row.get("matches") or 0) > 0 or int(row.get("ipl_matches") or 0) > 0
     except ValueError:
         return False
 

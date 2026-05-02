@@ -162,7 +162,7 @@ body {
 
 .grid-header {
   display: grid;
-  grid-template-columns: 60px minmax(120px, 2fr) minmax(100px, 1.2fr) minmax(140px, 1.8fr) minmax(80px, 1fr) minmax(80px, 1fr) minmax(100px, 1.2fr);
+  grid-template-columns: 60px minmax(120px, 2fr) minmax(100px, 1.2fr) minmax(140px, 1.8fr) minmax(80px, 1fr) minmax(80px, 1fr) minmax(90px, 1fr) minmax(100px, 1.2fr) minmax(90px, 1fr);
   gap: 0.5rem;
   font-size: 0.75rem;
   font-weight: 600;
@@ -180,7 +180,7 @@ body {
 
 .guess-row {
   display: grid;
-  grid-template-columns: 60px minmax(120px, 2fr) minmax(100px, 1.2fr) minmax(140px, 1.8fr) minmax(80px, 1fr) minmax(80px, 1fr) minmax(100px, 1.2fr);
+  grid-template-columns: 60px minmax(120px, 2fr) minmax(100px, 1.2fr) minmax(140px, 1.8fr) minmax(80px, 1fr) minmax(80px, 1fr) minmax(90px, 1fr) minmax(100px, 1.2fr) minmax(90px, 1fr);
   gap: 0.5rem;
 }
 

@@ -555,10 +555,14 @@ class StatsguruClient:
                 entry = team_players.setdefault(
                     row.player_id,
                     {
+                        "player_name": row.short_name,
+                        "country_code": row.country_code,
+                        "ipl_matches": 0,
                         "ipl_team_history": [],
                         "ipl_teams": [],
                     },
                 )
+                entry["ipl_matches"] += row.matches or 0
 
                 if team_name not in entry["ipl_teams"]:
                     entry["ipl_teams"].append(team_name)
@@ -567,6 +571,7 @@ class StatsguruClient:
                     {
                         "ipl_team": team_name,
                         "ipl_team_span": row.span,
+                        "ipl_team_matches": row.matches,
                         "ipl_team_last_seen_year": span_end_year,
                         "ipl_team_source_url": response_url,
                     }
@@ -605,10 +610,14 @@ class StatsguruClient:
             entry = latest_team_by_player.setdefault(
                 player_id,
                 {
+                    "player_name": team_entry.get("player_name"),
+                    "country_code": team_entry.get("country_code"),
+                    "ipl_matches": 0,
                     "ipl_team_history": [],
                     "ipl_teams": [],
                 },
             )
+            entry["ipl_matches"] += team_entry.get("ipl_matches") or 0
             for team_name in team_entry["ipl_teams"]:
                 if team_name not in entry["ipl_teams"]:
                     entry["ipl_teams"].append(team_name)
@@ -825,6 +834,39 @@ def base_players_from_existing_rows(
     return players
 
 
+def add_ipl_only_base_players(
+    base_players: list[BasePlayerRow],
+    ipl_teams: dict[str, dict[str, Any]],
+    max_players: int | None,
+) -> list[BasePlayerRow]:
+    players_by_id = {player.player_id: player for player in base_players}
+    added_count = 0
+    for player_id, ipl_meta in sorted(ipl_teams.items()):
+        if max_players and len(players_by_id) >= max_players:
+            break
+        if player_id in players_by_id:
+            continue
+
+        players_by_id[player_id] = BasePlayerRow(
+            player_id=player_id,
+            short_name=normalise_space(ipl_meta.get("player_name")) or player_id,
+            country_code=normalise_space(ipl_meta.get("country_code")) or None,
+            span=None,
+            matches=0,
+            source_url=normalise_space(ipl_meta.get("ipl_team_source_url")),
+        )
+        added_count += 1
+
+    if added_count:
+        print(
+            f"[info] added {added_count} IPL-only players to base player list; "
+            f"{len(players_by_id)} total players",
+            file=sys.stderr,
+            flush=True,
+        )
+    return list(players_by_id.values())
+
+
 def ipl_meta_from_existing_row(row: dict[str, str] | None) -> dict[str, Any]:
     if not row:
         return {}
@@ -839,10 +881,15 @@ def ipl_meta_from_existing_row(row: dict[str, str] | None) -> dict[str, Any]:
     return {
         "ipl_team": ipl_team,
         "ipl_teams": ipl_teams,
+        "ipl_matches": parse_int(row.get("ipl_matches")) or 0,
         "ipl_team_last_seen_year": parse_int(row.get("ipl_team_last_seen_year")),
         "ipl_team_span": normalise_space(row.get("ipl_team_span")) or None,
         "ipl_team_source_url": normalise_space(row.get("ipl_team_source_url")) or None,
     }
+
+
+def existing_rows_have_ipl_matches(existing_rows: dict[str, dict[str, str]]) -> bool:
+    return bool(existing_rows) and all("ipl_matches" in row for row in existing_rows.values())
 
 
 def build_rows(
@@ -857,8 +904,9 @@ def build_rows(
     for player in base_players:
         athlete = athletes.get(player.player_id, {})
         existing = existing_rows.get(player.player_id, {})
-        span_end_year = parse_span_end_year(player.span)
         ipl_meta = ipl_teams.get(player.player_id) or ipl_meta_from_existing_row(existing)
+        span_end_year = parse_span_end_year(player.span)
+        last_seen_year = span_end_year or ipl_meta.get("ipl_team_last_seen_year")
         existing_country = normalise_space(existing.get("country"))
         existing_country_code = normalise_space(existing.get("country_code"))
         existing_batting_hand = normalise_space(existing.get("batting_hand"))
@@ -883,13 +931,14 @@ def build_rows(
                 "age": parse_int(existing.get("age")) or athlete.get("age"),
                 "date_of_birth": existing_date_of_birth
                 or normalise_space(athlete.get("displayDOB")),
-                "matches": player.matches,
+                "matches": player.matches or 0,
+                "ipl_matches": ipl_meta.get("ipl_matches") or 0,
                 "career_span": player.span,
                 "career_span_end_year": span_end_year,
-                "retired": infer_retired(span_end_year, grace_years),
+                "retired": infer_retired(last_seen_year, grace_years),
                 "retirement_rule": (
                     f"inferred_from_last_seen_year_with_{grace_years}_year_grace"
-                    if span_end_year is not None
+                    if last_seen_year is not None
                     else None
                 ),
                 "ipl_team": ipl_meta.get("ipl_team"),
@@ -920,6 +969,7 @@ def write_csv(output_path: Path, rows: list[dict[str, Any]]) -> None:
         "age",
         "date_of_birth",
         "matches",
+        "ipl_matches",
         "career_span",
         "career_span_end_year",
         "retired",
@@ -1014,7 +1064,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--skip-ipl",
         action="store_true",
-        help="Skip IPL franchise enrichment.",
+        help="Skip IPL franchise enrichment and IPL-only player inclusion.",
+    )
+    parser.add_argument(
+        "--no-ipl-only",
+        action="store_true",
+        help="Do not add IPL-only players to the output player universe.",
     )
     parser.add_argument(
         "--refresh-cache",
@@ -1095,15 +1150,28 @@ def main() -> int:
     )
 
     ipl_teams: dict[str, dict[str, Any]] = {}
+    should_collect_ipl = (
+        not args.skip_ipl
+        and (
+            not all_players_have_existing_output
+            or not existing_rows_have_ipl_matches(existing_rows)
+            or (not args.no_ipl_only and not args.reuse_base_from_output)
+        )
+    )
     stage_started_at = time.monotonic()
     if args.skip_ipl:
         print("[info] skipping IPL enrichment", file=sys.stderr)
-    elif all_players_have_existing_output:
+    elif not should_collect_ipl:
         print("[info] reusing IPL fields from existing output CSV", file=sys.stderr)
     else:
         print("[info] building latest IPL team mapping from Statsguru Twenty20 team pages", file=sys.stderr)
         ipl_teams = statsguru.collect_latest_ipl_teams()
         print(f"[info] collected IPL mappings for {len(ipl_teams)} players", file=sys.stderr)
+        if not args.no_ipl_only:
+            base_players = add_ipl_only_base_players(base_players, ipl_teams, args.max_players)
+            player_ids = [player.player_id for player in base_players]
+        else:
+            print("[info] not adding IPL-only players because --no-ipl-only was set", file=sys.stderr)
     print(
         f"[info] IPL stage complete in {format_duration(time.monotonic() - stage_started_at)}",
         file=sys.stderr,

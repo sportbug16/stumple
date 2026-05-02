@@ -20,8 +20,23 @@ data/raw/                             Raw scraper CSV outputs
 ```bash
 npm install
 npm run dev
+npm test
 npm run build
 ```
+
+## Game Answer Rules
+
+Players can appear in search and guesses as long as they are present in `src/data/players.json`.
+Daily answers are stricter:
+
+- must have more than 20 international matches or more than 20 IPL matches
+- must have known values for answer fields used by the game
+- cannot have `Unknown`, blank, null, or missing values in those answer fields
+
+`currentIplTeam: "None"` is treated as known information, so non-IPL players can still be answers if the rest of their answer fields are known.
+IPL-only players can be answers when they clear the IPL match threshold and have known answer fields.
+
+The test helper `createTestRounds` generates many deterministic rounds from the eligible answer pool, which lets tests exercise more than the single daily answer path.
 
 ## Python Setup
 
@@ -71,7 +86,7 @@ The scraper avoids ESPNcricinfo profile HTML pages because they often return `40
 1. Statsguru result pages on `stats.espncricinfo.com` for player universe, international match counts, career span, and IPL franchise history.
 2. ESPN's public athlete JSON endpoint on `site.api.espn.com` for age, batting style, display name, role, and headshot image.
 
-The default `--class-id 11` is the combined international universe: Tests, ODIs, and T20Is. The `matches` field is international matches only. The JSON converter drops players with missing, invalid, or zero match counts, so domestic-only players do not enter `src/data/players.json`.
+The default `--class-id 11` is the combined international universe: Tests, ODIs, and T20Is. The `matches` field is international matches only. IPL team pages are merged in to add `ipl_matches` and include IPL-only players.
 
 ## Scraper Output
 
@@ -85,13 +100,14 @@ The raw CSV includes one row per player with fields including:
 - `image`
 - `age`
 - `matches`
+- `ipl_matches`
 - `career_span`
 - `retired`
 - `ipl_team`
 - `ipl_teams`
 - source URLs
 
-`ipl_team` is the most recent IPL franchise observed in Statsguru Twenty20 team pages. `ipl_teams` contains all observed IPL franchises for that player, separated by semicolons. This is appearance history, not a current contract source.
+`ipl_team` is the most recent IPL franchise observed in Statsguru Twenty20 team pages. `ipl_teams` contains all observed IPL franchises for that player, separated by semicolons. `ipl_matches` is the summed match count across those IPL franchise rows. This is appearance history, not a current contract source.
 
 ## Caching And Parallelism
 

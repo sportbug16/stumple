@@ -30,8 +30,20 @@ const formatRole = (role) => {
   }
 };
 
+const formatCount = (value) => Number.isFinite(Number(value)) ? Number(value) : 'Unknown';
+
 export default function GuessGrid({ guesses, targetPlayer }) {
-  const headers = ['Image', 'Name', 'Country', 'Role', 'Retired', 'Age', 'IPL Team'];
+  const headers = [
+    'Image',
+    'Name',
+    'Country',
+    'Role',
+    'Retired',
+    'Age',
+    'Intl Matches',
+    'IPL Team',
+    'IPL Matches'
+  ];
 
   return (
     <div className="grid-container">
@@ -60,12 +72,18 @@ export default function GuessGrid({ guesses, targetPlayer }) {
                 {guess.retired}
               </div>
               <div className={`cell color-${result.age.color} flex-center`}>
-                {guess.age} 
+                {Number.isFinite(Number(guess.age)) ? guess.age : 'Unknown'} 
                 {result.age.arrow === 'up' && <ArrowUp size={16} className="arrow-icon" />}
                 {result.age.arrow === 'down' && <ArrowDown size={16} className="arrow-icon" />}
               </div>
+              <div className={`cell color-${result.matches}`}>
+                {formatCount(guess.matches)}
+              </div>
               <div className={`cell color-${result.iplTeam}`}>
                 <div className="ipl-abbrev">{guess.currentIplTeam}</div>
+              </div>
+              <div className={`cell color-${result.iplMatches}`}>
+                {formatCount(guess.iplMatches)}
               </div>
             </div>
           );
