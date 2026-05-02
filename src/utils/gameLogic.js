@@ -161,12 +161,15 @@ export function compareMatchCount(guessValue, targetValue) {
   const guessMatches = Number(guessValue);
   const targetMatches = Number(targetValue);
   if (!Number.isFinite(guessMatches) || !Number.isFinite(targetMatches)) {
-    return "white";
+    return { color: "white", arrow: null };
   }
   if (guessMatches === targetMatches) {
-    return "green";
+    return { color: "green", arrow: null };
   }
-  return Math.abs(guessMatches - targetMatches) <= 20 ? "yellow" : "white";
+  return {
+    color: Math.abs(guessMatches - targetMatches) <= 20 ? "yellow" : "white",
+    arrow: guessMatches < targetMatches ? "up" : "down"
+  };
 }
 
 export function seededIndex(seed, length) {

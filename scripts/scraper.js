@@ -166,7 +166,7 @@ async function main() {
     existingPlayers = JSON.parse(raw);
     const ids = existingPlayers.map(p => parseInt(p.id)).filter(id => !isNaN(id));
     if (ids.length > 0) startId = Math.max(...ids) + 1;
-  } catch (err) {
+  } catch {
     console.log("Could not read existing players.json, creating new.");
   }
 

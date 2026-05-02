@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const CricketBall = ({ size = 24, className = '' }) => (
   <svg viewBox="0 0 100 100" className={className} width={size} height={size}>
     {/* Ball Base */}

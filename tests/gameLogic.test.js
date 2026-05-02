@@ -82,17 +82,25 @@ test("daily answers are selected only from the eligible answer pool", () => {
 });
 
 test("IPL match count uses match-count color logic", () => {
-  assert.equal(
+  assert.deepEqual(
     compareAttributes(player({ iplMatches: 75 }), player({ iplMatches: 75 })).iplMatches,
-    "green"
+    { color: "green", arrow: null }
   );
-  assert.equal(
+  assert.deepEqual(
     compareAttributes(player({ iplMatches: 61 }), player({ iplMatches: 75 })).iplMatches,
-    "yellow"
+    { color: "yellow", arrow: "up" }
   );
-  assert.equal(
+  assert.deepEqual(
     compareAttributes(player({ iplMatches: 20 }), player({ iplMatches: 75 })).iplMatches,
-    "white"
+    { color: "white", arrow: "up" }
+  );
+  assert.deepEqual(
+    compareAttributes(player({ iplMatches: 95 }), player({ iplMatches: 75 })).iplMatches,
+    { color: "yellow", arrow: "down" }
+  );
+  assert.deepEqual(
+    compareAttributes(player({ matches: 140 }), player({ matches: 75 })).matches,
+    { color: "white", arrow: "down" }
   );
 });
 
