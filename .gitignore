@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.cache/
+.venv/
+__pycache__/
+sample_players.csv
+data/raw/*.csv
