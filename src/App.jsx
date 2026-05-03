@@ -5,7 +5,7 @@ import playersData from './data/players.json';
 import SearchBar from './components/SearchBar';
 import GuessGrid from './components/GuessGrid';
 import { CricketBall } from './components/Icons';
-import { Calendar, HelpCircle, BarChart2 } from 'lucide-react';
+import { Calendar, HelpCircle, BarChart2, X, Check, CircleAlert } from 'lucide-react';
 import './index.css';
 
 const maxGuesses = 8;
@@ -36,6 +36,44 @@ function getGameStatus(currentGuesses, target) {
   return currentGuesses.length >= maxGuesses ? 'lost' : 'playing';
 }
 
+function ResultDialog({ status, guesses, targetPlayer, onClose, onPlayArchive }) {
+  if (status === 'playing') {
+    return null;
+  }
+
+  const isWin = status === 'won';
+
+  return (
+    <div className="dialog-backdrop" role="presentation">
+      <div className="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
+        <button className="dialog-close" type="button" aria-label="Close result" onClick={onClose}>
+          <X size={18} />
+        </button>
+        <div className={`result-mark ${isWin ? 'won' : 'lost'}`}>
+          {isWin ? <Check size={22} /> : <CircleAlert size={22} />}
+        </div>
+        <h2 id="result-title" className="result-title">
+          {isWin ? 'Yay! You got it right!' : 'Sorry! Better luck next time'}
+        </h2>
+        <p className="result-copy">
+          {isWin
+            ? `Solved in ${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'}.`
+            : `The player was ${targetPlayer.name}.`}
+        </p>
+        <div className="dialog-actions">
+          <button className="btn-secondary" type="button" onClick={onClose}>
+            Close
+          </button>
+          <button className="btn-primary" type="button" onClick={onPlayArchive}>
+            <Calendar size={16} />
+            Play Archive
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [gameState, setGameState] = useState(() => {
     const selectedDate = new Date();
@@ -45,11 +83,15 @@ function App() {
       guesses: readStoredGuesses(dateString)
     };
   });
+  const [dismissedResultKey, setDismissedResultKey] = useState(null);
 
   const { selectedDate, guesses } = gameState;
   const dateString = format(selectedDate, 'yyyy-MM-dd');
+  const todayString = format(new Date(), 'yyyy-MM-dd');
   const targetPlayer = useMemo(() => getDailyPlayer(playersData, dateString), [dateString]);
   const gameStatus = getGameStatus(guesses, targetPlayer);
+  const resultDialogKey = `${dateString}:${gameStatus}:${guesses.length}`;
+  const isResultDialogOpen = gameStatus !== 'playing' && dismissedResultKey !== resultDialogKey;
 
   const setGameDate = (selectedDate) => {
     const nextDateString = format(selectedDate, 'yyyy-MM-dd');
@@ -71,15 +113,14 @@ function App() {
     }));
   };
 
-  const changeDate = (days) => {
-    setGameState((previousState) => {
-      const selectedDate = subDays(previousState.selectedDate, days);
-      const nextDateString = format(selectedDate, 'yyyy-MM-dd');
-      return {
-        selectedDate,
-        guesses: readStoredGuesses(nextDateString)
-      };
-    });
+  const openArchivePrompt = () => {
+    const days = prompt("Enter days to go back (0 for today):", "1");
+    const dayCount = Number.parseInt(days, 10);
+    if (days === null || Number.isNaN(dayCount)) {
+      return;
+    }
+
+    setGameDate(subDays(new Date(), Math.max(0, dayCount)));
   };
 
   if (!targetPlayer) return <div className="loading">Loading...</div>;
@@ -96,17 +137,14 @@ function App() {
         </div>
         <div className="icon-group">
           <BarChart2 className="icon" />
-          <Calendar className="icon" onClick={() => {
-            const days = prompt("Enter days to go back (0 for today):", "0");
-            if(days !== null && !isNaN(days)) changeDate(parseInt(days));
-          }} />
+          <Calendar className="icon" onClick={openArchivePrompt} />
         </div>
       </header>
 
       <main className="main-content">
         <div className="date-display">
-          Playing archive: {dateString} 
-          {dateString !== format(new Date(), 'yyyy-MM-dd') && (
+          {dateString === todayString ? "Playing today's Stumple" : `Playing archive: ${dateString}`}
+          {dateString !== todayString && (
             <button className="btn-today" onClick={() => setGameDate(new Date())}>
               Back to Today
             </button>
@@ -122,20 +160,22 @@ function App() {
           </div>
         )}
 
-        {gameStatus !== 'playing' && (
-          <div className={`status-banner ${gameStatus}`}>
-            {gameStatus === 'won' 
-              ? `You won in ${guesses.length} guesses!` 
-              : `Game over. The player was ${targetPlayer.name}.`}
-          </div>
-        )}
-
         {guesses.length > 0 && (
           <div className="grid-wrapper">
-             <GuessGrid guesses={guesses} targetPlayer={targetPlayer} />
+             <GuessGrid guesses={guesses} targetPlayer={targetPlayer} showAnswerRow={gameStatus === 'lost'} />
           </div>
         )}
       </main>
+
+      {isResultDialogOpen && (
+        <ResultDialog
+          status={gameStatus}
+          guesses={guesses}
+          targetPlayer={targetPlayer}
+          onClose={() => setDismissedResultKey(resultDialogKey)}
+          onPlayArchive={openArchivePrompt}
+        />
+      )}
     </div>
   );
 }

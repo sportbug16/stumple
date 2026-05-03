@@ -19,6 +19,9 @@ export const ROLE_GROUPS = {
 };
 
 export const ANSWER_MIN_MATCHES = 20;
+export const NON_INDIA_MIN_INTL_MATCHES = 80;
+export const NON_INDIA_MIN_IPL_MATCHES = 25;
+export const ANSWER_MIN_BIRTH_YEAR = 1960;
 
 export const REQUIRED_ANSWER_FIELDS = [
   "id",
@@ -51,6 +54,10 @@ export function hasKnownAnswerFields(player) {
   return REQUIRED_ANSWER_FIELDS.every((field) => isKnownAnswerValue(player?.[field]));
 }
 
+export function hasEligibleAnswerBirthYear(player, minBirthYear = ANSWER_MIN_BIRTH_YEAR) {
+  return Number(player?.birthYear) > minBirthYear;
+}
+
 export function hasEnoughInternationalExperience(player, minMatches = ANSWER_MIN_MATCHES) {
   return Number(player?.matches) > minMatches;
 }
@@ -59,7 +66,23 @@ export function hasEnoughIplExperience(player, minMatches = ANSWER_MIN_MATCHES) 
   return Number(player?.iplMatches) > minMatches;
 }
 
+export function isCurrentIplSquadPlayer(player) {
+  return Boolean(
+    player?.currentIplTeam
+    && player.currentIplTeam !== "None"
+    && player.currentIplTeam !== "Unknown"
+  );
+}
+
 export function hasEnoughAnswerExperience(player, minMatches = ANSWER_MIN_MATCHES) {
+  if (player?.country !== "India") {
+    return (
+      Number(player?.matches) > NON_INDIA_MIN_INTL_MATCHES
+      || Number(player?.iplMatches) > NON_INDIA_MIN_IPL_MATCHES
+      || isCurrentIplSquadPlayer(player)
+    );
+  }
+
   return (
     hasEnoughInternationalExperience(player, minMatches)
     || hasEnoughIplExperience(player, minMatches)
@@ -67,7 +90,11 @@ export function hasEnoughAnswerExperience(player, minMatches = ANSWER_MIN_MATCHE
 }
 
 export function isEligibleAnswer(player, minMatches = ANSWER_MIN_MATCHES) {
-  return hasEnoughAnswerExperience(player, minMatches) && hasKnownAnswerFields(player);
+  return (
+    hasEligibleAnswerBirthYear(player)
+    && hasEnoughAnswerExperience(player, minMatches)
+    && hasKnownAnswerFields(player)
+  );
 }
 
 export function getAnswerPool(players, minMatches = ANSWER_MIN_MATCHES) {
@@ -99,21 +126,15 @@ export function compareAttributes(guess, target) {
     result.country = "white";
   }
 
-  // IPL Team
+  // Current IPL squad is green; any common current or past IPL franchise is yellow.
   if (guess.currentIplTeam === target.currentIplTeam) {
     result.iplTeam = "green";
   } else {
-    // If the guessed player played for the target's current team in the past
-    // Or if the guessed player's current team is one the target played for in the past
-    // The requirement: "yellow if in past player has played for that ipl team"
-    // Let's assume this means if there's an intersection between all teams (current + past) of guess and target
-    // Wait, the prompt says: "for ipl team do yellow if in past player has played for that ipl team"
-    // Does it mean if target's current team is in guess's past teams?
-    // Let's make it yellow if they share ANY team (current or past) but not the exact current match.
-    const guessAllTeams = [guess.currentIplTeam, ...(guess.pastIplTeams || [])].filter(t => t !== "None");
+    const guessAllTeams = new Set(
+      [guess.currentIplTeam, ...(guess.pastIplTeams || [])].filter(t => t !== "None")
+    );
     const targetAllTeams = [target.currentIplTeam, ...(target.pastIplTeams || [])].filter(t => t !== "None");
-    
-    const intersection = guessAllTeams.filter(t => targetAllTeams.includes(t));
+    const intersection = targetAllTeams.filter(t => guessAllTeams.has(t));
     if (intersection.length > 0) {
       result.iplTeam = "yellow";
     } else {

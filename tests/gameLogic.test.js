@@ -5,7 +5,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  ANSWER_MIN_BIRTH_YEAR,
   ANSWER_MIN_MATCHES,
+  NON_INDIA_MIN_INTL_MATCHES,
+  NON_INDIA_MIN_IPL_MATCHES,
   compareAttributes,
   createTestRounds,
   getAnswerPool,
@@ -13,6 +16,8 @@ import {
   getGuessPool,
   isEligibleAnswer
 } from "../src/utils/gameLogic.js";
+
+const ACTIVE_IPL_TEAMS = new Set(["CSK", "DC", "GT", "KKR", "LSG", "MI", "PBKS", "RCB", "RR", "SRH"]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const playersData = JSON.parse(
@@ -32,14 +37,42 @@ function player(overrides = {}) {
     role: "Top order batter",
     matches: ANSWER_MIN_MATCHES + 1,
     iplMatches: 0,
+    birthYear: 1996,
     ...overrides
   };
 }
 
-test("answer eligibility requires more than 20 international or IPL matches", () => {
+test("Indian answer eligibility keeps the more than 20 international or IPL match rule", () => {
   assert.equal(isEligibleAnswer(player({ matches: ANSWER_MIN_MATCHES, iplMatches: 0 })), false);
   assert.equal(isEligibleAnswer(player({ matches: ANSWER_MIN_MATCHES + 1, iplMatches: 0 })), true);
   assert.equal(isEligibleAnswer(player({ matches: 0, iplMatches: ANSWER_MIN_MATCHES + 1 })), true);
+});
+
+test("non-Indian answer eligibility uses higher match thresholds or current IPL squad status", () => {
+  assert.equal(isEligibleAnswer(player({
+    country: "Australia",
+    matches: NON_INDIA_MIN_INTL_MATCHES,
+    iplMatches: 0,
+    currentIplTeam: "None"
+  })), false);
+  assert.equal(isEligibleAnswer(player({
+    country: "Australia",
+    matches: NON_INDIA_MIN_INTL_MATCHES + 1,
+    iplMatches: 0,
+    currentIplTeam: "None"
+  })), true);
+  assert.equal(isEligibleAnswer(player({
+    country: "Australia",
+    matches: 0,
+    iplMatches: NON_INDIA_MIN_IPL_MATCHES + 1,
+    currentIplTeam: "None"
+  })), true);
+  assert.equal(isEligibleAnswer(player({
+    country: "Australia",
+    matches: 0,
+    iplMatches: 0,
+    currentIplTeam: "MI"
+  })), true);
 });
 
 test("unknown or missing answer fields disqualify answers", () => {
@@ -48,6 +81,12 @@ test("unknown or missing answer fields disqualify answers", () => {
   assert.equal(isEligibleAnswer(player({ role: "Unknown" })), false);
   assert.equal(isEligibleAnswer(player({ age: undefined })), false);
   assert.equal(isEligibleAnswer(player({ currentIplTeam: "None" })), true);
+});
+
+test("answer eligibility requires birth year after 1960", () => {
+  assert.equal(isEligibleAnswer(player({ birthYear: ANSWER_MIN_BIRTH_YEAR })), false);
+  assert.equal(isEligibleAnswer(player({ birthYear: ANSWER_MIN_BIRTH_YEAR + 1 })), true);
+  assert.equal(isEligibleAnswer(player({ birthYear: undefined })), false);
 });
 
 test("ineligible players remain available as guesses", () => {
@@ -104,17 +143,55 @@ test("IPL match count uses match-count color logic", () => {
   );
 });
 
+test("IPL team history can be yellow without treating latest historical team as current", () => {
+  assert.equal(
+    compareAttributes(
+      player({ currentIplTeam: "None", pastIplTeams: ["MI"] }),
+      player({ currentIplTeam: "MI", pastIplTeams: [] })
+    ).iplTeam,
+    "yellow"
+  );
+});
+
 test("real player data has a usable answer pool and keeps ineligible players guessable", () => {
   const answerPool = getAnswerPool(playersData);
   const guessPool = getGuessPool(playersData);
   const ineligiblePlayers = guessPool.filter((candidate) => !isEligibleAnswer(candidate));
 
-  assert.ok(answerPool.length > 1000, `expected a broad answer pool, got ${answerPool.length}`);
+  assert.ok(answerPool.length > 800, `expected a broad answer pool, got ${answerPool.length}`);
   assert.ok(ineligiblePlayers.length > 0, "expected low-information players to remain guessable");
   assert.equal(guessPool.length, playersData.length);
 
   for (const candidate of answerPool) {
     assert.equal(isEligibleAnswer(candidate), true, candidate.name);
+  }
+});
+
+test("real player data marks current IPL teams from the current squad source", () => {
+  const sachin = playersData.find((candidate) => candidate.name === "Sachin Tendulkar");
+  const dhoni = playersData.find((candidate) => candidate.name === "MS Dhoni");
+  const virat = playersData.find((candidate) => candidate.name === "Virat Kohli");
+  const jadeja = playersData.find((candidate) => candidate.name === "Ravindra Jadeja");
+  const rashids = playersData.filter((candidate) => candidate.name === "Rashid Khan");
+  const mohsins = playersData.filter((candidate) => candidate.name === "Mohsin Khan");
+
+  assert.equal(sachin.currentIplTeam, "None");
+  assert.deepEqual(sachin.pastIplTeams, ["MI"]);
+  assert.equal(dhoni.currentIplTeam, "CSK");
+  assert.equal(virat.currentIplTeam, "RCB");
+  assert.equal(jadeja.currentIplTeam, "RR");
+  assert.ok(jadeja.pastIplTeams.includes("CSK"));
+  assert.equal(rashids.find((candidate) => candidate.country === "Afghanistan").currentIplTeam, "GT");
+  assert.equal(rashids.find((candidate) => candidate.country === "Pakistan").currentIplTeam, "None");
+  assert.equal(rashids.find((candidate) => candidate.country === "Nepal").currentIplTeam, "None");
+  assert.equal(mohsins.find((candidate) => candidate.country === "India").currentIplTeam, "LSG");
+  assert.equal(mohsins.find((candidate) => candidate.country === "Pakistan").currentIplTeam, "None");
+
+  for (const candidate of playersData) {
+    assert.ok(
+      candidate.currentIplTeam === "None" || ACTIVE_IPL_TEAMS.has(candidate.currentIplTeam),
+      `${candidate.name} has invalid current IPL team ${candidate.currentIplTeam}`
+    );
   }
 });
 
