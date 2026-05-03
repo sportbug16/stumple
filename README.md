@@ -1,6 +1,6 @@
 # Stumple
 
-Stumple is a daily cricket-player guessing game built with React and Vite. The app selects a deterministic player for each date and lets users narrow the answer by comparing country, IPL team history, age, retirement status, batting hand, and role.
+Stumple is a daily cricket-player guessing game built with React and Vite. The app selects a deterministic player for each date and lets users narrow the answer by comparing country, current IPL team, IPL history, age, retirement status, batting hand, and role.
 
 The runtime player database lives at `src/data/players.json`. It is generated from ESPNcricinfo Statsguru data with the scripts in `scripts/`.
 
@@ -12,6 +12,8 @@ src/data/players.json                 Game-ready player database
 scripts/espncricinfo_statsguru_scraper.py
 scripts/build_players_json_from_statsguru.py
 data/raw/                             Raw scraper CSV outputs
+data/reference/current_ipl_squads_2026.csv
+                                      Current IPL squad source used for currentIplTeam
 .cache/espncricinfo/                  Cached Statsguru pages and ESPN athlete JSON
 ```
 
@@ -29,11 +31,19 @@ npm run build
 Players can appear in search and guesses as long as they are present in `src/data/players.json`.
 Daily answers are stricter:
 
-- must have more than 20 international matches or more than 20 IPL matches
 - must have known values for answer fields used by the game
 - cannot have `Unknown`, blank, null, or missing values in those answer fields
+- must have a known birth year after 1960
 
-`currentIplTeam: "None"` is treated as known information, so non-IPL players can still be answers if the rest of their answer fields are known.
+Indian players can be daily answers when they have more than 20 international matches or more than 20 IPL matches.
+
+Non-Indian players can be daily answers when at least one of these is true:
+
+- more than 80 international matches
+- more than 25 IPL matches
+- listed in the current IPL squad source
+
+`currentIplTeam: "None"` is treated as known information, so non-IPL players and players without a current IPL contract can still be answers if the rest of their answer fields are known.
 IPL-only players can be answers when they clear the IPL match threshold and have known answer fields.
 
 The test helper `createTestRounds` generates many deterministic rounds from the eligible answer pool, which lets tests exercise more than the single daily answer path.
@@ -65,6 +75,8 @@ Rebuild the game JSON:
   --output src/data/players.json
 ```
 
+By default, the JSON builder reads `data/reference/current_ipl_squads_2026.csv` to assign `currentIplTeam`. That reference was captured from IPLT20 team pages on May 4, 2026. Use `--current-ipl-squads path/to/squads.csv` when updating the season source.
+
 Fast rebuild from an existing CSV, without crawling Statsguru again:
 
 ```bash
@@ -85,6 +97,7 @@ The scraper avoids ESPNcricinfo profile HTML pages because they often return `40
 
 1. Statsguru result pages on `stats.espncricinfo.com` for player universe, international match counts, career span, and IPL franchise history.
 2. ESPN's public athlete JSON endpoint on `site.api.espn.com` for age, batting style, display name, role, and headshot image.
+3. Official IPL squad pages captured in `data/reference/current_ipl_squads_2026.csv` for current IPL team membership.
 
 The default `--class-id 11` is the combined international universe: Tests, ODIs, and T20Is. The `matches` field is international matches only. IPL team pages are merged in to add `ipl_matches` and include IPL-only players.
 
@@ -99,6 +112,7 @@ The raw CSV includes one row per player with fields including:
 - `role`
 - `image`
 - `age`
+- `date_of_birth`
 - `matches`
 - `ipl_matches`
 - `career_span`
@@ -108,6 +122,12 @@ The raw CSV includes one row per player with fields including:
 - source URLs
 
 `ipl_team` is the most recent IPL franchise observed in Statsguru Twenty20 team pages. `ipl_teams` contains all observed IPL franchises for that player, separated by semicolons. `ipl_matches` is the summed match count across those IPL franchise rows. This is appearance history, not a current contract source.
+
+When building `src/data/players.json`, `currentIplTeam` is assigned only by joining the player database to the current squad reference. Players absent from the current squad file get `currentIplTeam: "None"`. Historical franchises remain in `pastIplTeams` for yellow IPL-history matching.
+
+The squad join uses ESPN player ids when a name is ambiguous and normalized player names plus curated aliases for spelling differences such as `Surya Kumar Yadav` / `Suryakumar Yadav`. The build output prints how many current squad rows matched the player database and lists unmatched squad rows, which usually means the player has not yet appeared in the Statsguru-derived database.
+
+In the game, IPL-team yellow means the guessed player and answer have at least one common IPL franchise across current squad membership or historical appearances. The tooltip labels these as common IPL teams.
 
 ## Caching And Parallelism
 

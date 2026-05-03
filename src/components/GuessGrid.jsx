@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { compareAttributes, getRegion, REGIONS, ROLE_GROUPS } from '../utils/gameLogic';
+import { getIplTeamMeta } from '../utils/iplTeams';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { BatIcon } from './Icons';
 
@@ -22,8 +23,8 @@ const formatRole = (role) => {
     case "Top order batter": return <><BatIcon /> Top Order</>;
     case "Middle order batter": return <><BatIcon /> Mid Order</>;
     case "Wicketkeeper batter": return <>🧤 WK</>;
-    case "Spin bowler": return <>🌀 Spin</>;
-    case "Fast bowler": return <>⚡ Fast</>;
+    case "Spin bowler": return <>🌀 Spin Bowler</>;
+    case "Fast bowler": return <>⚡ Fast Bowler</>;
     case "Batting allrounder": return <>🏏 Bat AR</>;
     case "Bowling allrounder": return <>🏏 Bowl AR</>;
     case "Allrounder": return <>🏏 Allrounder</>;
@@ -51,6 +52,11 @@ const getIplTeams = (player) => (
   [player.currentIplTeam, ...(player.pastIplTeams || [])]
     .filter((team) => team && team !== 'None' && team !== 'Unknown')
 );
+
+const getCommonIplTeams = (guess, target) => {
+  const targetTeams = new Set(getIplTeams(target));
+  return getIplTeams(guess).filter((team) => targetTeams.has(team));
+};
 
 function TooltipList({ items }) {
   return (
@@ -133,21 +139,6 @@ const getRoleTooltip = (guess, color) => {
   );
 };
 
-const getRetiredTooltip = (guess, color) => {
-  if (color === 'green') {
-    return null;
-  }
-
-  const possibility = guess.retired === 'Yes' ? 'No' : 'Yes';
-  return createTooltip(
-    `Possibilities: ${possibility}`,
-    <>
-      <strong className="tooltip-heading">Possibilities:</strong>
-      <TooltipList items={[possibility]} />
-    </>
-  );
-};
-
 const getAgeTooltip = (guess, result) => {
   const color = result.color;
   const age = Number(guess.age);
@@ -169,24 +160,34 @@ const getMatchTooltip = (value, result) => {
     return null;
   }
 
-  const bound = `${result.arrow === 'up' ? '>' : '<'} ${count}`;
+  let bound = `${result.arrow === 'up' ? '>' : '<'} ${count}`;
+  if (color === 'yellow') {
+    bound = result.arrow === 'up'
+      ? `> ${count} and <= ${count + 20}`
+      : `>= ${Math.max(0, count - 20)} and < ${count}`;
+  }
+
   return createTooltip(
     bound,
     <div className="tooltip-bound">{bound}</div>
   );
 };
 
-const getIplTeamTooltip = (guess, color) => {
+const getIplTeamTooltip = (guess, target, color) => {
   if (color === 'green') {
     return null;
   }
 
-  const teams = getIplTeams(guess);
   if (color === 'yellow') {
+    const teams = getCommonIplTeams(guess, target);
+    if (teams.length === 0) {
+      return null;
+    }
+
     return createTooltip(
-      `Shared history: ${teams.join(', ')}`,
+      `Common IPL teams: ${teams.join(', ')}`,
       <>
-        <strong className="tooltip-heading">Shared history:</strong>
+        <strong className="tooltip-heading">Common IPL teams:</strong>
         <TooltipList items={teams} />
       </>
     );
@@ -258,7 +259,31 @@ function ArrowIndicator({ arrow }) {
   return null;
 }
 
-export default function GuessGrid({ guesses, targetPlayer }) {
+function IplTeamBadge({ team }) {
+  const teamMeta = getIplTeamMeta(team);
+  if (!teamMeta.logo) {
+    return <span>{teamMeta.name}</span>;
+  }
+
+  return (
+    <span className="ipl-team-badge" title={teamMeta.name}>
+      <img className="ipl-team-logo" src={teamMeta.logo} alt="" aria-hidden="true" />
+      <span>{team}</span>
+    </span>
+  );
+}
+
+const GREEN_RESULT = {
+  country: 'green',
+  role: 'green',
+  retired: 'green',
+  age: { color: 'green', arrow: null },
+  matches: { color: 'green', arrow: null },
+  iplTeam: 'green',
+  iplMatches: { color: 'green', arrow: null }
+};
+
+export default function GuessGrid({ guesses, targetPlayer, showAnswerRow = false }) {
   const headers = [
     'Image',
     'Name',
@@ -267,7 +292,7 @@ export default function GuessGrid({ guesses, targetPlayer }) {
     'Retired',
     'Age',
     'Intl Matches',
-    'IPL Team',
+    'Current IPL Team',
     'IPL Matches'
   ];
 
@@ -277,38 +302,48 @@ export default function GuessGrid({ guesses, targetPlayer }) {
         {headers.map((h) => <div key={h} className="header-cell">{h}</div>)}
       </div>
       <div className="grid-body">
-        {guesses.map((guess, index) => {
-          const result = compareAttributes(guess, targetPlayer);
+        {[
+          ...guesses.map((guess, index) => ({ player: guess, key: `guess-${guess.id}-${index}`, isAnswerRow: false })),
+          ...(showAnswerRow ? [{ player: targetPlayer, key: `answer-${targetPlayer.id}`, isAnswerRow: true }] : [])
+        ].map(({ player: guess, key, isAnswerRow }) => {
+          const result = isAnswerRow ? GREEN_RESULT : compareAttributes(guess, targetPlayer);
+          const rowClassName = `guess-row animate-pop ${isAnswerRow ? 'answer-row' : ''}`;
 
           return (
-            <div key={index} className="guess-row animate-pop">
-              <div className="cell image-cell">
-                <img src={guess.image} alt={guess.name} />
+            <div key={key} className={rowClassName}>
+              <div className={`cell image-cell ${isAnswerRow ? 'answer-cell color-green' : ''}`}>
+                <img
+                  src={guess.image}
+                  alt={guess.name}
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
+                />
               </div>
-              <div className="cell name-cell">
+              <div className={`cell name-cell ${isAnswerRow ? 'answer-cell color-green' : ''}`}>
                 {guess.name}
               </div>
-              <ClueCell result={result.country} tooltip={getCountryTooltip(guess, result.country)}>
+              <ClueCell result={result.country} tooltip={isAnswerRow ? null : getCountryTooltip(guess, result.country)}>
                 {COUNTRY_ABBREV[guess.country] || guess.country}
               </ClueCell>
-              <ClueCell result={result.role} tooltip={getRoleTooltip(guess, result.role)}>
+              <ClueCell result={result.role} tooltip={isAnswerRow ? null : getRoleTooltip(guess, result.role)}>
                 {formatRole(guess.role)}
               </ClueCell>
-              <ClueCell result={result.retired} tooltip={getRetiredTooltip(guess, result.retired)}>
+              <ClueCell result={result.retired} tooltip={null}>
                 {guess.retired}
               </ClueCell>
-              <ClueCell result={result.age} tooltip={getAgeTooltip(guess, result.age)} className="flex-center">
+              <ClueCell result={result.age} tooltip={isAnswerRow ? null : getAgeTooltip(guess, result.age)} className="flex-center">
                 {Number.isFinite(Number(guess.age)) ? guess.age : 'Unknown'} 
                 <ArrowIndicator arrow={result.age.arrow} />
               </ClueCell>
-              <ClueCell result={result.matches} tooltip={getMatchTooltip(guess.matches, result.matches)} className="flex-center">
+              <ClueCell result={result.matches} tooltip={isAnswerRow ? null : getMatchTooltip(guess.matches, result.matches)} className="flex-center">
                 {formatCount(guess.matches)}
                 <ArrowIndicator arrow={result.matches.arrow} />
               </ClueCell>
-              <ClueCell result={result.iplTeam} tooltip={getIplTeamTooltip(guess, result.iplTeam)}>
-                <div className="ipl-abbrev">{guess.currentIplTeam}</div>
+              <ClueCell result={result.iplTeam} tooltip={isAnswerRow ? null : getIplTeamTooltip(guess, targetPlayer, result.iplTeam)}>
+                <IplTeamBadge team={guess.currentIplTeam} />
               </ClueCell>
-              <ClueCell result={result.iplMatches} tooltip={getMatchTooltip(guess.iplMatches, result.iplMatches)} className="flex-center">
+              <ClueCell result={result.iplMatches} tooltip={isAnswerRow ? null : getMatchTooltip(guess.iplMatches, result.iplMatches)} className="flex-center">
                 {formatCount(guess.iplMatches)}
                 <ArrowIndicator arrow={result.iplMatches.arrow} />
               </ClueCell>
