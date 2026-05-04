@@ -1,10 +1,33 @@
 export const REGIONS = {
-  "South Asia": ["India", "Pakistan", "Sri Lanka", "Bangladesh", "Afghanistan", "Nepal"],
-  "Middle East": ["UAE", "Oman", "Qatar", "Kuwait", "Saudi Arabia"],
-  "Europe": ["England", "Ireland", "Scotland", "Netherlands", "Italy", "Jersey"],
-  "Oceania": ["Australia", "New Zealand", "Papua New Guinea", "Fiji"],
-  "Americas": ["West Indies", "USA", "Canada", "Bermuda"],
-  "Africa": ["South Africa", "Zimbabwe", "Namibia", "Uganda", "Kenya"]
+  "South Asia": [
+    "Afghanistan", "BAN", "Bangladesh", "Bhutan", "India", "Maldives", "Nepal", "Pakistan", "Sri Lanka"
+  ],
+  "Middle East": [
+    "Bahrain", "Iran", "Israel", "Kuwait", "Oman", "Qatar", "Saudi Arabia", "United Arab Emirates"
+  ],
+  "Europe": [
+    "Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czech Republic", "Denmark", "England",
+    "Estonia", "Finland", "France", "Germany", "Gibraltar", "Greece", "Guernsey", "Hungary", "Iceland",
+    "Ireland", "Isle of Man", "Italy", "Jersey", "Luxembourg", "Malta", "Netherlands", "Norway",
+    "Portugal", "Romania", "Scotland", "Serbia", "Slovenia", "Spain", "Sweden", "Switzerland", "Turkey"
+  ],
+  "Oceania": [
+    "Australia", "Cook Islands", "Fiji", "Indonesia", "New Zealand", "Papua New Guinea", "Samoa", "Vanuatu"
+  ],
+  "Americas": [
+    "Argentina", "Bahamas", "Belize", "Bermuda", "Brazil", "Canada", "Cayman Islands", "Chile",
+    "Colombia", "Costa Rica", "Falkland Islands", "Mexico", "Panama", "Peru", "St Helena", "Suriname",
+    "Turks and Caicos Island", "Turks and Caicos Islands", "United States of America", "West Indies"
+  ],
+  "Africa": [
+    "Botswana", "Cameroon", "East and Central Africa", "Eswatini", "Gambia", "Ghana", "Ivory Coast",
+    "Kenya", "Lesotho", "Malawi", "Mali", "Mozambique", "Namibia", "Nigeria", "Rwanda", "Seychelles",
+    "Sierra Leone", "South Africa", "Tanzania", "Uganda", "Zambia", "Zimbabwe"
+  ],
+  "Asia": [
+    "Cambodia", "China", "Hong Kong", "Japan", "Malaysia", "Mongolia", "Myanmar", "Philippines",
+    "Singapore", "South Korea", "Thailand", "Timor-Leste"
+  ]
 };
 
 export const ROLE_GROUPS = {
@@ -21,7 +44,9 @@ export const ROLE_GROUPS = {
 export const ANSWER_MIN_MATCHES = 20;
 export const NON_INDIA_MIN_INTL_MATCHES = 80;
 export const NON_INDIA_MIN_IPL_MATCHES = 25;
-export const ANSWER_MIN_BIRTH_YEAR = 1960;
+export const SENIOR_PLAYER_AGE = 45;
+export const SENIOR_MIN_INTL_RUNS = 5000;
+export const SENIOR_MIN_INTL_WICKETS = 200;
 
 export const REQUIRED_ANSWER_FIELDS = [
   "id",
@@ -31,6 +56,7 @@ export const REQUIRED_ANSWER_FIELDS = [
   "age",
   "retired",
   "battingHand",
+  "bowlingHand",
   "role",
   "matches",
   "iplMatches"
@@ -54,8 +80,15 @@ export function hasKnownAnswerFields(player) {
   return REQUIRED_ANSWER_FIELDS.every((field) => isKnownAnswerValue(player?.[field]));
 }
 
-export function hasEligibleAnswerBirthYear(player, minBirthYear = ANSWER_MIN_BIRTH_YEAR) {
-  return Number(player?.birthYear) > minBirthYear;
+export function hasEnoughSeniorPerformance(player) {
+  if (Number(player?.age) <= SENIOR_PLAYER_AGE) {
+    return true;
+  }
+
+  return (
+    Number(player?.intlRuns) > SENIOR_MIN_INTL_RUNS
+    || Number(player?.intlWickets) > SENIOR_MIN_INTL_WICKETS
+  );
 }
 
 export function hasEnoughInternationalExperience(player, minMatches = ANSWER_MIN_MATCHES) {
@@ -91,7 +124,7 @@ export function hasEnoughAnswerExperience(player, minMatches = ANSWER_MIN_MATCHE
 
 export function isEligibleAnswer(player, minMatches = ANSWER_MIN_MATCHES) {
   return (
-    hasEligibleAnswerBirthYear(player)
+    hasEnoughSeniorPerformance(player)
     && hasEnoughAnswerExperience(player, minMatches)
     && hasKnownAnswerFields(player)
   );
@@ -126,16 +159,18 @@ export function compareAttributes(guess, target) {
     result.country = "white";
   }
 
-  // Current IPL squad is green; any common current or past IPL franchise is yellow.
+  // Current IPL squad is green; yellow means the answer has past history with the guessed current team.
   if (guess.currentIplTeam === target.currentIplTeam) {
     result.iplTeam = "green";
   } else {
-    const guessAllTeams = new Set(
-      [guess.currentIplTeam, ...(guess.pastIplTeams || [])].filter(t => t !== "None")
-    );
-    const targetAllTeams = [target.currentIplTeam, ...(target.pastIplTeams || [])].filter(t => t !== "None");
-    const intersection = targetAllTeams.filter(t => guessAllTeams.has(t));
-    if (intersection.length > 0) {
+    const guessedCurrentTeam = guess.currentIplTeam;
+    const targetPastTeams = target.pastIplTeams || [];
+    if (
+      guessedCurrentTeam
+      && guessedCurrentTeam !== "None"
+      && guessedCurrentTeam !== "Unknown"
+      && targetPastTeams.includes(guessedCurrentTeam)
+    ) {
       result.iplTeam = "yellow";
     } else {
       result.iplTeam = "white";
@@ -158,6 +193,9 @@ export function compareAttributes(guess, target) {
 
   // Batting Hand
   result.battingHand = guess.battingHand === target.battingHand ? "green" : "white";
+
+  // Bowling Hand
+  result.bowlingHand = guess.bowlingHand === target.bowlingHand ? "green" : "white";
 
   // Role
   if (guess.role === target.role) {

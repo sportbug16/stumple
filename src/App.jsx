@@ -9,6 +9,7 @@ import { Calendar, HelpCircle, BarChart2, X, Check, CircleAlert } from 'lucide-r
 import './index.css';
 
 const maxGuesses = 8;
+const archiveDayCount = 365;
 
 function readStoredGuesses(dateString) {
   const storedGuesses = localStorage.getItem(`stumple_guesses_${dateString}`);
@@ -22,6 +23,22 @@ function readStoredGuesses(dateString) {
   } catch {
     return [];
   }
+}
+
+function hasStoredGuesses(dateString) {
+  return readStoredGuesses(dateString).length > 0;
+}
+
+function createArchiveDates(today = new Date()) {
+  return Array.from({ length: archiveDayCount }, (_, index) => {
+    const date = subDays(today, index);
+    const value = format(date, 'yyyy-MM-dd');
+    return {
+      value,
+      label: index === 0 ? "Today" : format(date, 'MMM d, yyyy'),
+      played: hasStoredGuesses(value)
+    };
+  });
 }
 
 function getGameStatus(currentGuesses, target) {
@@ -89,6 +106,7 @@ function App() {
   const dateString = format(selectedDate, 'yyyy-MM-dd');
   const todayString = format(new Date(), 'yyyy-MM-dd');
   const targetPlayer = useMemo(() => getDailyPlayer(playersData, dateString), [dateString]);
+  const archiveDates = createArchiveDates();
   const gameStatus = getGameStatus(guesses, targetPlayer);
   const resultDialogKey = `${dateString}:${gameStatus}:${guesses.length}`;
   const isResultDialogOpen = gameStatus !== 'playing' && dismissedResultKey !== resultDialogKey;
@@ -113,14 +131,18 @@ function App() {
     }));
   };
 
-  const openArchivePrompt = () => {
-    const days = prompt("Enter days to go back (0 for today):", "1");
-    const dayCount = Number.parseInt(days, 10);
-    if (days === null || Number.isNaN(dayCount)) {
+  const handleArchiveSelect = (event) => {
+    const nextDateString = event.target.value;
+    if (!nextDateString) {
       return;
     }
 
-    setGameDate(subDays(new Date(), Math.max(0, dayCount)));
+    setGameDate(new Date(`${nextDateString}T00:00:00`));
+  };
+
+  const openArchivePicker = () => {
+    const yesterday = subDays(new Date(), 1);
+    setGameDate(yesterday);
   };
 
   if (!targetPlayer) return <div className="loading">Loading...</div>;
@@ -137,7 +159,21 @@ function App() {
         </div>
         <div className="icon-group">
           <BarChart2 className="icon" />
-          <Calendar className="icon" onClick={openArchivePrompt} />
+          <div className="archive-select-wrap">
+            <Calendar className="icon archive-icon" aria-hidden="true" />
+            <select
+              className="archive-select"
+              aria-label="Select archive date"
+              value={dateString}
+              onChange={handleArchiveSelect}
+            >
+              {archiveDates.map(({ value, label, played }) => (
+                <option key={value} value={value}>
+                  {played ? "✓ " : "  "}{label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
 
@@ -173,7 +209,7 @@ function App() {
           guesses={guesses}
           targetPlayer={targetPlayer}
           onClose={() => setDismissedResultKey(resultDialogKey)}
-          onPlayArchive={openArchivePrompt}
+          onPlayArchive={openArchivePicker}
         />
       )}
     </div>

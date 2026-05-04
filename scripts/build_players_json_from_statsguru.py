@@ -59,13 +59,23 @@ class CurrentIplSquads:
     by_name_key: dict[str, int]
 
 
-def normalise_batting_hand(value: str) -> str:
+def normalise_hand(value: str) -> str:
     value_lower = value.lower()
     if "left" in value_lower:
         return "Left"
     if "right" in value_lower:
         return "Right"
+    if value_lower.startswith("legbreak"):
+        return "Right"
     return "Unknown"
+
+
+def normalise_batting_hand(value: str) -> str:
+    return normalise_hand(value)
+
+
+def normalise_bowling_hand(value: str) -> str:
+    return normalise_hand(value)
 
 
 def normalise_retired(value: str) -> str:
@@ -213,9 +223,12 @@ def build_player(
         "age": parse_optional_int(row.get("age")),
         "retired": normalise_retired(row.get("retired") or ""),
         "battingHand": normalise_batting_hand(row.get("batting_hand") or ""),
+        "bowlingHand": normalise_bowling_hand(row.get("bowling_hand") or ""),
         "role": row.get("role") or "Unknown",
         "image": row.get("image") or DEFAULT_IMAGE,
         "matches": parse_count(row.get("matches")),
+        "intlRuns": parse_count(row.get("intl_runs")),
+        "intlWickets": parse_count(row.get("intl_wickets")),
         "iplMatches": parse_count(row.get("ipl_matches")),
         "dateOfBirth": row.get("date_of_birth") or None,
         "birthYear": parse_birth_year(row.get("date_of_birth")),
