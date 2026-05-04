@@ -5,15 +5,18 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
-  ANSWER_MIN_BIRTH_YEAR,
   ANSWER_MIN_MATCHES,
   NON_INDIA_MIN_INTL_MATCHES,
   NON_INDIA_MIN_IPL_MATCHES,
+  SENIOR_MIN_INTL_RUNS,
+  SENIOR_MIN_INTL_WICKETS,
+  SENIOR_PLAYER_AGE,
   compareAttributes,
   createTestRounds,
   getAnswerPool,
   getDailyPlayer,
   getGuessPool,
+  getRegion,
   isEligibleAnswer
 } from "../src/utils/gameLogic.js";
 
@@ -34,10 +37,13 @@ function player(overrides = {}) {
     age: 30,
     retired: "No",
     battingHand: "Right",
+    bowlingHand: "Right",
     role: "Top order batter",
     matches: ANSWER_MIN_MATCHES + 1,
     iplMatches: 0,
     birthYear: 1996,
+    intlRuns: 0,
+    intlWickets: 0,
     ...overrides
   };
 }
@@ -78,15 +84,33 @@ test("non-Indian answer eligibility uses higher match thresholds or current IPL 
 test("unknown or missing answer fields disqualify answers", () => {
   assert.equal(isEligibleAnswer(player({ country: "Unknown" })), false);
   assert.equal(isEligibleAnswer(player({ battingHand: "Unknown" })), false);
+  assert.equal(isEligibleAnswer(player({ bowlingHand: "Unknown" })), false);
   assert.equal(isEligibleAnswer(player({ role: "Unknown" })), false);
   assert.equal(isEligibleAnswer(player({ age: undefined })), false);
   assert.equal(isEligibleAnswer(player({ currentIplTeam: "None" })), true);
 });
 
-test("answer eligibility requires birth year after 1960", () => {
-  assert.equal(isEligibleAnswer(player({ birthYear: ANSWER_MIN_BIRTH_YEAR })), false);
-  assert.equal(isEligibleAnswer(player({ birthYear: ANSWER_MIN_BIRTH_YEAR + 1 })), true);
-  assert.equal(isEligibleAnswer(player({ birthYear: undefined })), false);
+test("senior answer eligibility requires substantial international runs or wickets", () => {
+  assert.equal(isEligibleAnswer(player({
+    age: SENIOR_PLAYER_AGE + 1,
+    intlRuns: SENIOR_MIN_INTL_RUNS,
+    intlWickets: SENIOR_MIN_INTL_WICKETS
+  })), false);
+  assert.equal(isEligibleAnswer(player({
+    age: SENIOR_PLAYER_AGE + 1,
+    intlRuns: SENIOR_MIN_INTL_RUNS + 1,
+    intlWickets: 0
+  })), true);
+  assert.equal(isEligibleAnswer(player({
+    age: SENIOR_PLAYER_AGE + 1,
+    intlRuns: 0,
+    intlWickets: SENIOR_MIN_INTL_WICKETS + 1
+  })), true);
+  assert.equal(isEligibleAnswer(player({
+    age: SENIOR_PLAYER_AGE,
+    intlRuns: 0,
+    intlWickets: 0
+  })), true);
 });
 
 test("ineligible players remain available as guesses", () => {
@@ -143,14 +167,51 @@ test("IPL match count uses match-count color logic", () => {
   );
 });
 
-test("IPL team history can be yellow without treating latest historical team as current", () => {
+test("batting and bowling hand use exact match color logic", () => {
+  const target = player({ battingHand: "Right", bowlingHand: "Left" });
+
+  assert.equal(compareAttributes(player({ battingHand: "Right" }), target).battingHand, "green");
+  assert.equal(compareAttributes(player({ battingHand: "Left" }), target).battingHand, "white");
+  assert.equal(compareAttributes(player({ bowlingHand: "Left" }), target).bowlingHand, "green");
+  assert.equal(compareAttributes(player({ bowlingHand: "Right" }), target).bowlingHand, "white");
+});
+
+test("IPL team color compares current team first and answer past teams second", () => {
+  assert.equal(
+    compareAttributes(
+      player({ currentIplTeam: "None", pastIplTeams: [] }),
+      player({ currentIplTeam: "None", pastIplTeams: ["MI"] })
+    ).iplTeam,
+    "green"
+  );
+  assert.equal(
+    compareAttributes(
+      player({ currentIplTeam: "MI", pastIplTeams: [] }),
+      player({ currentIplTeam: "MI", pastIplTeams: [] })
+    ).iplTeam,
+    "green"
+  );
+  assert.equal(
+    compareAttributes(
+      player({ currentIplTeam: "MI", pastIplTeams: [] }),
+      player({ currentIplTeam: "CSK", pastIplTeams: ["MI"] })
+    ).iplTeam,
+    "yellow"
+  );
   assert.equal(
     compareAttributes(
       player({ currentIplTeam: "None", pastIplTeams: ["MI"] }),
       player({ currentIplTeam: "MI", pastIplTeams: [] })
     ).iplTeam,
-    "yellow"
+    "white"
   );
+});
+
+test("country regions use full country names from player data", () => {
+  assert.equal(getRegion("Zimbabwe"), "Africa");
+  assert.equal(getRegion("Netherlands"), "Europe");
+  assert.equal(getRegion("United States of America"), "Americas");
+  assert.equal(getRegion("United Arab Emirates"), "Middle East");
 });
 
 test("real player data has a usable answer pool and keeps ineligible players guessable", () => {
@@ -158,12 +219,18 @@ test("real player data has a usable answer pool and keeps ineligible players gue
   const guessPool = getGuessPool(playersData);
   const ineligiblePlayers = guessPool.filter((candidate) => !isEligibleAnswer(candidate));
 
-  assert.ok(answerPool.length > 800, `expected a broad answer pool, got ${answerPool.length}`);
+  assert.ok(answerPool.length > 500, `expected a broad answer pool, got ${answerPool.length}`);
   assert.ok(ineligiblePlayers.length > 0, "expected low-information players to remain guessable");
   assert.equal(guessPool.length, playersData.length);
 
   for (const candidate of answerPool) {
     assert.equal(isEligibleAnswer(candidate), true, candidate.name);
+    if (candidate.age > SENIOR_PLAYER_AGE) {
+      assert.ok(
+        candidate.intlRuns > SENIOR_MIN_INTL_RUNS || candidate.intlWickets > SENIOR_MIN_INTL_WICKETS,
+        `${candidate.name} should clear senior performance filter`
+      );
+    }
   }
 });
 

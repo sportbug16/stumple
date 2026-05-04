@@ -18,6 +18,114 @@ const COUNTRY_ABBREV = {
   "Afghanistan": "🇦🇫 AFG"
 };
 
+const COUNTRY_ABBREV_FULL = {
+  ...COUNTRY_ABBREV,
+  "Argentina": "🇦🇷 ARG",
+  "Austria": "🇦🇹 AUT",
+  "BAN": "🇧🇩 BAN",
+  "Bahamas": "🇧🇸 BAH",
+  "Bahrain": "🇧🇭 BRN",
+  "Belgium": "🇧🇪 BEL",
+  "Belize": "🇧🇿 BLZ",
+  "Bermuda": "🇧🇲 BER",
+  "Bhutan": "🇧🇹 BHU",
+  "Botswana": "🇧🇼 BOT",
+  "Brazil": "🇧🇷 BRA",
+  "Bulgaria": "🇧🇬 BUL",
+  "Cambodia": "🇰🇭 CAM",
+  "Cameroon": "🇨🇲 CMR",
+  "Canada": "🇨🇦 CAN",
+  "Cayman Islands": "🇰🇾 CAY",
+  "Chile": "🇨🇱 CHI",
+  "China": "🇨🇳 CHN",
+  "Colombia": "🇨🇴 COL",
+  "Cook Islands": "🇨🇰 COK",
+  "Costa Rica": "🇨🇷 CRC",
+  "Croatia": "🇭🇷 CRO",
+  "Cyprus": "🇨🇾 CYP",
+  "Czech Republic": "🇨🇿 CZE",
+  "Denmark": "🇩🇰 DEN",
+  "East and Central Africa": "ECA",
+  "Estonia": "🇪🇪 EST",
+  "Eswatini": "🇸🇿 SWZ",
+  "Falkland Islands": "🇫🇰 FLK",
+  "Fiji": "🇫🇯 FIJ",
+  "Finland": "🇫🇮 FIN",
+  "France": "🇫🇷 FRA",
+  "Gambia": "🇬🇲 GAM",
+  "Germany": "🇩🇪 GER",
+  "Ghana": "🇬🇭 GHA",
+  "Gibraltar": "🇬🇮 GIB",
+  "Greece": "🇬🇷 GRE",
+  "Guernsey": "🇬🇬 GSY",
+  "Hong Kong": "🇭🇰 HKG",
+  "Hungary": "🇭🇺 HUN",
+  "Iceland": "🇮🇸 ISL",
+  "Indonesia": "🇮🇩 INA",
+  "Iran": "🇮🇷 IRN",
+  "Ireland": "🇮🇪 IRE",
+  "Isle of Man": "🇮🇲 IOM",
+  "Israel": "🇮🇱 ISR",
+  "Italy": "🇮🇹 ITA",
+  "Ivory Coast": "🇨🇮 CIV",
+  "Japan": "🇯🇵 JPN",
+  "Jersey": "🇯🇪 JER",
+  "Kenya": "🇰🇪 KEN",
+  "Kuwait": "🇰🇼 KUW",
+  "Lesotho": "🇱🇸 LES",
+  "Luxembourg": "🇱🇺 LUX",
+  "Malawi": "🇲🇼 MAW",
+  "Malaysia": "🇲🇾 MAS",
+  "Maldives": "🇲🇻 MDV",
+  "Mali": "🇲🇱 MLI",
+  "Malta": "🇲🇹 MLT",
+  "Mexico": "🇲🇽 MEX",
+  "Mongolia": "🇲🇳 MGL",
+  "Mozambique": "🇲🇿 MOZ",
+  "Myanmar": "🇲🇲 MYA",
+  "Namibia": "🇳🇦 NAM",
+  "Nepal": "🇳🇵 NEP",
+  "Netherlands": "🇳🇱 NED",
+  "Nigeria": "🇳🇬 NGR",
+  "Norway": "🇳🇴 NOR",
+  "Oman": "🇴🇲 OMA",
+  "Panama": "🇵🇦 PAN",
+  "Papua New Guinea": "🇵🇬 PNG",
+  "Peru": "🇵🇪 PER",
+  "Philippines": "🇵🇭 PHI",
+  "Portugal": "🇵🇹 POR",
+  "Qatar": "🇶🇦 QAT",
+  "Romania": "🇷🇴 ROU",
+  "Rwanda": "🇷🇼 RWA",
+  "Samoa": "🇼🇸 SAM",
+  "Saudi Arabia": "🇸🇦 KSA",
+  "Scotland": "🏴 SCO",
+  "Serbia": "🇷🇸 SRB",
+  "Seychelles": "🇸🇨 SEY",
+  "Sierra Leone": "🇸🇱 SLE",
+  "Singapore": "🇸🇬 SIN",
+  "Slovenia": "🇸🇮 SLO",
+  "South Korea": "🇰🇷 KOR",
+  "Spain": "🇪🇸 ESP",
+  "St Helena": "🇸🇭 SHN",
+  "Suriname": "🇸🇷 SUR",
+  "Sweden": "🇸🇪 SWE",
+  "Switzerland": "🇨🇭 SUI",
+  "TBA": "TBA",
+  "Tanzania": "🇹🇿 TAN",
+  "Thailand": "🇹🇭 THA",
+  "Timor-Leste": "🇹🇱 TLS",
+  "Turkey": "🇹🇷 TUR",
+  "Turks and Caicos Island": "🇹🇨 TCI",
+  "Turks and Caicos Islands": "🇹🇨 TCI",
+  "Uganda": "🇺🇬 UGA",
+  "United Arab Emirates": "🇦🇪 UAE",
+  "United States of America": "🇺🇸 USA",
+  "Vanuatu": "🇻🇺 VAN",
+  "Zambia": "🇿🇲 ZAM",
+  "Zimbabwe": "🇿🇼 ZIM"
+};
+
 const formatRole = (role) => {
   switch (role) {
     case "Top order batter": return <><BatIcon /> Top Order</>;
@@ -46,16 +154,6 @@ const ROLE_SECTION_BY_GROUP = {
   Batter: "Batsman",
   Bowler: "Bowler",
   Allrounder: "All Rounder"
-};
-
-const getIplTeams = (player) => (
-  [player.currentIplTeam, ...(player.pastIplTeams || [])]
-    .filter((team) => team && team !== 'None' && team !== 'Unknown')
-);
-
-const getCommonIplTeams = (guess, target) => {
-  const targetTeams = new Set(getIplTeams(target));
-  return getIplTeams(guess).filter((team) => targetTeams.has(team));
 };
 
 function TooltipList({ items }) {
@@ -179,16 +277,16 @@ const getIplTeamTooltip = (guess, target, color) => {
   }
 
   if (color === 'yellow') {
-    const teams = getCommonIplTeams(guess, target);
-    if (teams.length === 0) {
+    const team = guess.currentIplTeam;
+    if (!team || team === 'None' || team === 'Unknown' || !(target.pastIplTeams || []).includes(team)) {
       return null;
     }
 
     return createTooltip(
-      `Common IPL teams: ${teams.join(', ')}`,
+      `Player has played for ${team} in the past`,
       <>
-        <strong className="tooltip-heading">Common IPL teams:</strong>
-        <TooltipList items={teams} />
+        <strong className="tooltip-heading">Past IPL Team:</strong>
+        <div className="tooltip-bound">Played for {team}</div>
       </>
     );
   }
@@ -276,6 +374,8 @@ function IplTeamBadge({ team }) {
 const GREEN_RESULT = {
   country: 'green',
   role: 'green',
+  battingHand: 'green',
+  bowlingHand: 'green',
   retired: 'green',
   age: { color: 'green', arrow: null },
   matches: { color: 'green', arrow: null },
@@ -289,6 +389,8 @@ export default function GuessGrid({ guesses, targetPlayer, showAnswerRow = false
     'Name',
     'Country',
     'Role',
+    'Batting Hand',
+    'Bowling Hand',
     'Retired',
     'Age',
     'Intl Matches',
@@ -307,11 +409,12 @@ export default function GuessGrid({ guesses, targetPlayer, showAnswerRow = false
           ...(showAnswerRow ? [{ player: targetPlayer, key: `answer-${targetPlayer.id}`, isAnswerRow: true }] : [])
         ].map(({ player: guess, key, isAnswerRow }) => {
           const result = isAnswerRow ? GREEN_RESULT : compareAttributes(guess, targetPlayer);
-          const rowClassName = `guess-row animate-pop ${isAnswerRow ? 'answer-row' : ''}`;
+          const isCorrectRow = isAnswerRow || guess.id === targetPlayer.id;
+          const rowClassName = `guess-row animate-pop ${isAnswerRow ? 'answer-row' : ''} ${isCorrectRow ? 'correct-row' : ''}`;
 
           return (
             <div key={key} className={rowClassName}>
-              <div className={`cell image-cell ${isAnswerRow ? 'answer-cell color-green' : ''}`}>
+              <div className={`cell image-cell ${isCorrectRow ? 'answer-cell color-green' : ''}`}>
                 <img
                   src={guess.image}
                   alt={guess.name}
@@ -320,14 +423,20 @@ export default function GuessGrid({ guesses, targetPlayer, showAnswerRow = false
                   fetchPriority="high"
                 />
               </div>
-              <div className={`cell name-cell ${isAnswerRow ? 'answer-cell color-green' : ''}`}>
+              <div className={`cell name-cell ${isCorrectRow ? 'answer-cell color-green' : ''}`}>
                 {guess.name}
               </div>
               <ClueCell result={result.country} tooltip={isAnswerRow ? null : getCountryTooltip(guess, result.country)}>
-                {COUNTRY_ABBREV[guess.country] || guess.country}
+                {COUNTRY_ABBREV_FULL[guess.country] || guess.country}
               </ClueCell>
               <ClueCell result={result.role} tooltip={isAnswerRow ? null : getRoleTooltip(guess, result.role)}>
                 {formatRole(guess.role)}
+              </ClueCell>
+              <ClueCell result={result.battingHand} tooltip={null}>
+                {guess.battingHand}
+              </ClueCell>
+              <ClueCell result={result.bowlingHand} tooltip={null}>
+                {guess.bowlingHand}
               </ClueCell>
               <ClueCell result={result.retired} tooltip={null}>
                 {guess.retired}

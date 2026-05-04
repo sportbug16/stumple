@@ -10,7 +10,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 from typing import Any, Iterator
@@ -63,6 +63,8 @@ class BasePlayerRow:
     country_code: str | None
     span: str | None
     matches: int | None
+    runs: int | None
+    wickets: int | None
     source_url: str
 
 
@@ -134,6 +136,19 @@ def parse_int(value: str | None) -> int | None:
     return int(digits) if digits else None
 
 
+def parse_statsguru_url_params(url: str) -> dict[str, str]:
+    if "?" not in url:
+        return {}
+    query = url.split("?", 1)[1]
+    params: dict[str, str] = {}
+    for part in re.split(r"[;&]", query):
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        params[key] = value
+    return params
+
+
 def extract_player_id(href: str | None) -> str | None:
     if not href:
         return None
@@ -184,6 +199,24 @@ def bat_style_to_hand(athlete: dict[str, Any]) -> str | None:
         return None
     first = bat_styles[0]
     return normalise_space(first.get("description"))
+
+
+def bowl_style_to_hand(athlete: dict[str, Any]) -> str | None:
+    bowl_styles = athlete.get("bowlStyle") or []
+    for style in bowl_styles:
+        description = normalise_space(style.get("description")).lower()
+        if "left" in description:
+            return "Left"
+        if "right" in description:
+            return "Right"
+
+    for style in bowl_styles:
+        description = normalise_space(style.get("description")).lower()
+        short_description = normalise_space(style.get("shortDescription")).lower()
+        if description.startswith("legbreak") or short_description in {"lb", "lbg"}:
+            return "Right"
+
+    return None
 
 
 def athlete_display_name(athlete: dict[str, Any], fallback_name: str) -> str:
@@ -460,6 +493,8 @@ class StatsguruClient:
                     country_code=country_code,
                     span=row_values.get("Span"),
                     matches=parse_int(row_values.get("Mat")),
+                    runs=parse_int(row_values.get("Runs")),
+                    wickets=parse_int(row_values.get("Wkts")),
                     source_url=response_url,
                 )
             )
@@ -519,6 +554,50 @@ class StatsguruClient:
             )
 
         return list(players_by_id.values())
+
+    def collect_cached_base_players(
+        self,
+        class_id: int,
+        stats_type: str,
+    ) -> dict[str, BasePlayerRow]:
+        players_by_id: dict[str, BasePlayerRow] = {}
+        cached_pages = 0
+        for meta_path in sorted(self.cache_dir.glob("*.json")):
+            html_path = meta_path.with_suffix(".html")
+            if not html_path.exists():
+                continue
+
+            try:
+                metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+
+            response_url = metadata.get("url") or ""
+            params = parse_statsguru_url_params(response_url)
+            if (
+                params.get("class") != str(class_id)
+                or params.get("type") != stats_type
+                or params.get("team")
+            ):
+                continue
+
+            try:
+                soup = BeautifulSoup(html_path.read_text(encoding="utf-8"), "lxml")
+            except OSError:
+                continue
+
+            cached_pages += 1
+            for row in self.parse_player_rows(soup, response_url):
+                players_by_id[row.player_id] = row
+
+        if cached_pages:
+            print(
+                f"[info] loaded cached Statsguru base stats from {cached_pages} pages "
+                f"for {len(players_by_id)} players",
+                file=sys.stderr,
+                flush=True,
+            )
+        return players_by_id
 
     def discover_ipl_team_ids(self) -> dict[str, str]:
         soup, _, _ = self.get_soup("/ci/engine/stats/index.html", {"class": 6, "type": "allround"})
@@ -804,6 +883,9 @@ def existing_row_has_enrichment(row: dict[str, str] | None) -> bool:
         return False
     return bool(
         row.get("age")
+        and row.get("batting_hand")
+        and row.get("bowling_hand")
+        and row.get("role")
         and (row.get("display_name") or row.get("full_name") or row.get("player_name"))
     )
 
@@ -828,6 +910,8 @@ def base_players_from_existing_rows(
                 country_code=normalise_space(row.get("country_code")) or None,
                 span=normalise_space(row.get("career_span")) or None,
                 matches=parse_int(row.get("matches")),
+                runs=parse_int(row.get("intl_runs")),
+                wickets=parse_int(row.get("intl_wickets")),
                 source_url=normalise_space(row.get("statsguru_source_url")),
             )
         )
@@ -853,6 +937,8 @@ def add_ipl_only_base_players(
             country_code=normalise_space(ipl_meta.get("country_code")) or None,
             span=None,
             matches=0,
+            runs=0,
+            wickets=0,
             source_url=normalise_space(ipl_meta.get("ipl_team_source_url")),
         )
         added_count += 1
@@ -910,6 +996,7 @@ def build_rows(
         existing_country = normalise_space(existing.get("country"))
         existing_country_code = normalise_space(existing.get("country_code"))
         existing_batting_hand = normalise_space(existing.get("batting_hand"))
+        existing_bowling_hand = normalise_space(existing.get("bowling_hand"))
         existing_role = normalise_space(existing.get("role"))
         existing_image = normalise_space(existing.get("image"))
         existing_date_of_birth = normalise_space(existing.get("date_of_birth"))
@@ -926,12 +1013,15 @@ def build_rows(
                 "country": existing_country or athlete_country(athlete, player.country_code),
                 "country_code": player.country_code or existing_country_code,
                 "batting_hand": existing_batting_hand or bat_style_to_hand(athlete),
+                "bowling_hand": existing_bowling_hand or bowl_style_to_hand(athlete),
                 "role": existing_role or athlete_role(athlete),
                 "image": existing_image or athlete_headshot_url(athlete),
                 "age": parse_int(existing.get("age")) or athlete.get("age"),
                 "date_of_birth": existing_date_of_birth
                 or normalise_space(athlete.get("displayDOB")),
                 "matches": player.matches or 0,
+                "intl_runs": player.runs or 0,
+                "intl_wickets": player.wickets or 0,
                 "ipl_matches": ipl_meta.get("ipl_matches") or 0,
                 "career_span": player.span,
                 "career_span_end_year": span_end_year,
@@ -964,11 +1054,14 @@ def write_csv(output_path: Path, rows: list[dict[str, Any]]) -> None:
         "country",
         "country_code",
         "batting_hand",
+        "bowling_hand",
         "role",
         "image",
         "age",
         "date_of_birth",
         "matches",
+        "intl_runs",
+        "intl_wickets",
         "ipl_matches",
         "career_span",
         "career_span_end_year",
@@ -1125,6 +1218,33 @@ def main() -> int:
     if args.reuse_base_from_output and existing_rows:
         print("[info] reusing base player list from existing output CSV", file=sys.stderr)
         base_players = base_players_from_existing_rows(existing_rows, args.max_players)
+        cached_base_players = statsguru.collect_cached_base_players(args.class_id, args.stats_type)
+        if cached_base_players:
+            base_players = [
+                replace(
+                    player,
+                    span=cached_base_players[player.player_id].span or player.span,
+                    matches=(
+                        cached_base_players[player.player_id].matches
+                        if cached_base_players[player.player_id].matches is not None
+                        else player.matches
+                    ),
+                    runs=(
+                        cached_base_players[player.player_id].runs
+                        if cached_base_players[player.player_id].runs is not None
+                        else player.runs
+                    ),
+                    wickets=(
+                        cached_base_players[player.player_id].wickets
+                        if cached_base_players[player.player_id].wickets is not None
+                        else player.wickets
+                    ),
+                    source_url=cached_base_players[player.player_id].source_url or player.source_url,
+                )
+                if player.player_id in cached_base_players
+                else player
+                for player in base_players
+            ]
     else:
         if args.reuse_base_from_output:
             print("[warn] no matching existing output rows found; falling back to Statsguru", file=sys.stderr)
