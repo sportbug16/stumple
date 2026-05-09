@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-DEFAULT_IMAGE = "https://a.espncdn.com/i/headshots/cricket/players/default-player-logo-500.png"
+DEFAULT_IMAGE = "/player-images/default-player.svg"
 DEFAULT_CURRENT_IPL_SQUADS = Path("data/reference/current_ipl_squads_2026.csv")
 
 IPL_TEAM_ABBREVIATIONS = {
@@ -122,6 +122,13 @@ def player_display_name(row: dict[str, str]) -> str:
     return row.get("display_name") or row.get("full_name") or row["player_name"]
 
 
+def player_image(row: dict[str, str]) -> str:
+    image = row.get("image") or ""
+    if not image or "default-player-logo" in image:
+        return DEFAULT_IMAGE
+    return image
+
+
 def normalise_player_name_key(value: str | None) -> str:
     value = (value or "").lower()
     value = re.sub(r"\b(mohd|mohammad|mohammed)\b", "mohammed", value)
@@ -225,7 +232,7 @@ def build_player(
         "battingHand": normalise_batting_hand(row.get("batting_hand") or ""),
         "bowlingHand": normalise_bowling_hand(row.get("bowling_hand") or ""),
         "role": row.get("role") or "Unknown",
-        "image": row.get("image") or DEFAULT_IMAGE,
+        "image": player_image(row),
         "matches": parse_count(row.get("matches")),
         "intlRuns": parse_count(row.get("intl_runs")),
         "intlWickets": parse_count(row.get("intl_wickets")),

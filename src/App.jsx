@@ -10,6 +10,7 @@ import './index.css';
 
 const maxGuesses = 8;
 const archiveDayCount = 365;
+const defaultPlayerImage = '/player-images/default-player.svg';
 
 function readStoredGuesses(dateString) {
   const storedGuesses = localStorage.getItem(`stumple_guesses_${dateString}`);
@@ -72,10 +73,23 @@ function ResultDialog({ status, guesses, targetPlayer, onClose, onPlayArchive })
         <h2 id="result-title" className="result-title">
           {isWin ? 'Yay! You got it right!' : 'Sorry! Better luck next time'}
         </h2>
+        <p className="result-answer-line">
+          The correct answer was <strong>{targetPlayer.name}</strong>.
+        </p>
+        <img
+          className="result-player-image"
+          src={targetPlayer.image}
+          alt={targetPlayer.name}
+          loading="eager"
+          decoding="async"
+          onError={(event) => {
+            event.currentTarget.src = defaultPlayerImage;
+          }}
+        />
         <p className="result-copy">
           {isWin
             ? `Solved in ${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'}.`
-            : `The player was ${targetPlayer.name}.`}
+            : 'Try another archive round.'}
         </p>
         <div className="dialog-actions">
           <button className="btn-secondary" type="button" onClick={onClose}>
@@ -85,6 +99,52 @@ function ResultDialog({ status, guesses, targetPlayer, onClose, onPlayArchive })
             <Calendar size={16} />
             Play Archive
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HelpDialog({ onClose }) {
+  return (
+    <div className="dialog-backdrop" role="presentation">
+      <div className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <button className="dialog-close" type="button" aria-label="Close help" onClick={onClose}>
+          <X size={18} />
+        </button>
+        <h2 id="help-title" className="help-title">How to Play</h2>
+
+        <ol className="help-steps">
+          <li><strong>Guess a cricketer.</strong> Type a name, use the suggestion list, and submit up to 8 guesses.</li>
+          <li><strong>Read the clue colors.</strong> Each row compares your guess with the answer across country, role, age, matches, IPL team, and hands.</li>
+          <li><strong>Narrow it down.</strong> Use green exact matches, yellow near matches, and arrows to find the player.</li>
+        </ol>
+
+        <div className="help-board" aria-label="Color examples">
+          <div className="help-board-row">
+            <div className="help-cell color-green">IND</div>
+            <div className="help-text"><strong>Green</strong><span>Exact match.</span></div>
+          </div>
+          <div className="help-board-row">
+            <div className="help-cell color-yellow">Top Order</div>
+            <div className="help-text"><strong>Yellow</strong><span>Close clue: same region, same role group, nearby number, or answer has past IPL history with that team.</span></div>
+          </div>
+          <div className="help-board-row">
+            <div className="help-cell color-white">42 ↓</div>
+            <div className="help-text"><strong>Gray</strong><span>No match. Arrows mean the answer is higher or lower than your guess.</span></div>
+          </div>
+        </div>
+
+        <div className="help-example-strip" aria-label="Example clue row">
+          <span className="help-chip color-green" title="Exact match">🇮🇳 IND</span>
+          <span className="help-chip color-yellow" title="Hover game cells to see possible matching values">🏏 Allrounder</span>
+          <span className="help-chip color-white" title="The answer has more international matches">180 ↑</span>
+          <span className="help-chip color-yellow" title="The answer has played for this IPL team in the past">MI</span>
+        </div>
+
+        <div className="help-hover-hint">
+          <span className="help-pointer" aria-hidden="true">↖</span>
+          <span>Hover or focus yellow and gray cells during the game for extra hints.</span>
         </div>
       </div>
     </div>
@@ -101,6 +161,7 @@ function App() {
     };
   });
   const [dismissedResultKey, setDismissedResultKey] = useState(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const { selectedDate, guesses } = gameState;
   const dateString = format(selectedDate, 'yyyy-MM-dd');
@@ -151,7 +212,9 @@ function App() {
     <div className="app-container">
       <header className="header">
         <div className="icon-group">
-          <HelpCircle className="icon" />
+          <button className="icon-button" type="button" aria-label="How to play" onClick={() => setIsHelpOpen(true)}>
+            <HelpCircle className="icon" />
+          </button>
         </div>
         <div className="title-group flex-center">
           <CricketBall size={32} />
@@ -211,6 +274,10 @@ function App() {
           onClose={() => setDismissedResultKey(resultDialogKey)}
           onPlayArchive={openArchivePicker}
         />
+      )}
+
+      {isHelpOpen && (
+        <HelpDialog onClose={() => setIsHelpOpen(false)} />
       )}
     </div>
   );

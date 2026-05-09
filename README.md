@@ -75,6 +75,14 @@ Rebuild the game JSON:
   --output src/data/players.json
 ```
 
+Cache remote player images locally:
+
+```bash
+.venv/bin/python scripts/cache_player_images.py --workers 16
+```
+
+That downloads reachable player headshots into `public/player-images/` and rewrites matching `image` fields in `src/data/players.json` to local public paths. Broken or missing source images continue to use the in-app local fallback image.
+
 By default, the JSON builder reads `data/reference/current_ipl_squads_2026.csv` to assign `currentIplTeam`. That reference was captured from IPLT20 team pages on May 4, 2026. Use `--current-ipl-squads path/to/squads.csv` when updating the season source.
 
 Fast rebuild from an existing CSV, without crawling Statsguru again:

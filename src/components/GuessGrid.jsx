@@ -5,6 +5,8 @@ import { getIplTeamMeta } from '../utils/iplTeams';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { BatIcon } from './Icons';
 
+const DEFAULT_PLAYER_IMAGE = '/player-images/default-player.svg';
+
 const COUNTRY_ABBREV = {
   "India": "🇮🇳 IND",
   "Pakistan": "🇵🇰 PAK",
@@ -421,6 +423,9 @@ export default function GuessGrid({ guesses, targetPlayer, showAnswerRow = false
                   loading="eager"
                   decoding="async"
                   fetchPriority="high"
+                  onError={(event) => {
+                    event.currentTarget.src = DEFAULT_PLAYER_IMAGE;
+                  }}
                 />
               </div>
               <div className={`cell name-cell ${isCorrectRow ? 'answer-cell color-green' : ''}`}>
